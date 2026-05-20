@@ -18,11 +18,11 @@ const FEATURES = [
   { key: "var", label: "Beat variability", unit: "", default: 0.04, min: 0, max: 0.3, step: 0.005 },
 ] as const;
 
-const PRESETS: { name: string; vals: Record<string, number>; color: string }[] = [
-  { name: "Normal", vals: { hr: 72, qrs: 90, qt: 400, st: 0, var: 0.04 }, color: "success" },
-  { name: "Bradycardia", vals: { hr: 45, qrs: 95, qt: 430, st: 0.02, var: 0.05 }, color: "primary" },
-  { name: "Tachycardia", vals: { hr: 135, qrs: 85, qt: 340, st: 0.05, var: 0.06 }, color: "accent" },
-  { name: "Arrhythmia", vals: { hr: 90, qrs: 135, qt: 460, st: 0.3, var: 0.22 }, color: "danger" },
+const PRESETS: { name: string; vals: Record<string, number>; dot: string }[] = [
+  { name: "Normal", vals: { hr: 72, qrs: 90, qt: 400, st: 0, var: 0.04 }, dot: "bg-success shadow-[0_0_10px_oklch(0.86_0.2_155)]" },
+  { name: "Bradycardia", vals: { hr: 45, qrs: 95, qt: 430, st: 0.02, var: 0.05 }, dot: "bg-primary shadow-[0_0_10px_oklch(0.85_0.18_195)]" },
+  { name: "Tachycardia", vals: { hr: 135, qrs: 85, qt: 340, st: 0.05, var: 0.06 }, dot: "bg-accent shadow-[0_0_10px_oklch(0.8_0.22_310)]" },
+  { name: "Arrhythmia", vals: { hr: 90, qrs: 135, qt: 460, st: 0.3, var: 0.22 }, dot: "bg-danger shadow-[0_0_10px_oklch(0.78_0.22_22)]" },
 ];
 
 function HeartbeatPage() {

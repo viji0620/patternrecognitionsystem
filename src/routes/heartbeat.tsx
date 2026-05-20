@@ -95,7 +95,7 @@ function HeartbeatPage() {
                   className="group flex items-center justify-between rounded-xl border border-border bg-surface-2/40 px-3 py-2.5 text-left text-sm font-medium text-foreground transition hover:border-primary hover:bg-surface-2"
                 >
                   <span>{p.name}</span>
-                  <span className={`h-2 w-2 rounded-full bg-${p.color} shadow-[0_0_10px] shadow-${p.color}`} />
+                  <span className={`h-2 w-2 rounded-full ${p.dot}`} />
                 </button>
               ))}
             </div>

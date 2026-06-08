@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ShapesRouteImport } from './routes/shapes'
 import { Route as HeartbeatRouteImport } from './routes/heartbeat'
 import { Route as FraudRouteImport } from './routes/fraud'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ShapesRoute = ShapesRouteImport.update({
+  id: '/shapes',
+  path: '/shapes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HeartbeatRoute = HeartbeatRouteImport.update({
   id: '/heartbeat',
   path: '/heartbeat',
@@ -33,34 +39,45 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/fraud': typeof FraudRoute
   '/heartbeat': typeof HeartbeatRoute
+  '/shapes': typeof ShapesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/fraud': typeof FraudRoute
   '/heartbeat': typeof HeartbeatRoute
+  '/shapes': typeof ShapesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/fraud': typeof FraudRoute
   '/heartbeat': typeof HeartbeatRoute
+  '/shapes': typeof ShapesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/fraud' | '/heartbeat'
+  fullPaths: '/' | '/fraud' | '/heartbeat' | '/shapes'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/fraud' | '/heartbeat'
-  id: '__root__' | '/' | '/fraud' | '/heartbeat'
+  to: '/' | '/fraud' | '/heartbeat' | '/shapes'
+  id: '__root__' | '/' | '/fraud' | '/heartbeat' | '/shapes'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   FraudRoute: typeof FraudRoute
   HeartbeatRoute: typeof HeartbeatRoute
+  ShapesRoute: typeof ShapesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/shapes': {
+      id: '/shapes'
+      path: '/shapes'
+      fullPath: '/shapes'
+      preLoaderRoute: typeof ShapesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/heartbeat': {
       id: '/heartbeat'
       path: '/heartbeat'
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FraudRoute: FraudRoute,
   HeartbeatRoute: HeartbeatRoute,
+  ShapesRoute: ShapesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

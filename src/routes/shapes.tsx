@@ -195,14 +195,20 @@ function ShapesPage() {
         <div className="mt-8 grid gap-6 lg:grid-cols-[auto_1fr]">
           {/* Canvas card */}
           <div className="rounded-3xl border border-border bg-surface/40 p-6 backdrop-blur animate-fade-up" style={{ animationDelay: "80ms" }}>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">// canvas · 280×280</div>
-              <button
-                onClick={clear}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2/60 px-3 py-1 text-xs text-muted-foreground transition hover:border-danger hover:text-foreground"
-              >
-                <Trash2 className="h-3 w-3" /> clear
-              </button>
+              <div className="flex items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-surface-2/60 px-3 py-1 text-xs text-muted-foreground transition hover:border-accent hover:text-foreground">
+                  <Upload className="h-3 w-3" /> upload
+                  <input type="file" accept="image/*" className="hidden" onChange={onUpload} />
+                </label>
+                <button
+                  onClick={clear}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2/60 px-3 py-1 text-xs text-muted-foreground transition hover:border-danger hover:text-foreground"
+                >
+                  <Trash2 className="h-3 w-3" /> clear
+                </button>
+              </div>
             </div>
 
             <div className="relative mt-4">

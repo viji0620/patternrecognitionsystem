@@ -221,3 +221,167 @@ export function trainTestSplit(X: Vec[], y: number[], testRatio = 0.2, seed = 1)
     yTest: te.map((i) => y[i]),
   };
 }
+
+// ---------------- Shape / image patterns ----------------
+export const SHAPE_LABELS = ["Circle", "Square", "Triangle", "Line"];
+
+export type ShapeFeatures = {
+  fillRatio: number;       // filled pixels / bbox area
+  aspect: number;          // min(w,h)/max(w,h)  (0..1)
+  circularity: number;     // 4πA / P²
+  vSym: number;            // 0..1
+  hSym: number;            // 0..1
+  cornerScore: number;     // approx corners via centroid distance variance
+};
+
+export function featuresToVec(f: ShapeFeatures): Vec {
+  return [f.fillRatio, f.aspect, f.circularity, f.vSym, f.hSym, f.cornerScore];
+}
+
+// Extract features from a binary mask (1 = ink). w, h = mask dimensions.
+export function extractShapeFeatures(mask: Uint8Array, w: number, h: number): ShapeFeatures | null {
+  let minX = w, minY = h, maxX = -1, maxY = -1, count = 0;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (mask[y * w + x]) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+        count++;
+      }
+    }
+  }
+  if (count < 12 || maxX < 0) return null;
+  const bw = maxX - minX + 1;
+  const bh = maxY - minY + 1;
+  const bboxArea = bw * bh;
+  const fillRatio = count / bboxArea;
+  const aspect = Math.min(bw, bh) / Math.max(bw, bh);
+
+  // Perimeter: count ink pixels that have at least one non-ink neighbor (4-connected).
+  let perim = 0;
+  let cx = 0, cy = 0;
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const i = y * w + x;
+      if (!mask[i]) continue;
+      cx += x; cy += y;
+      const up = y > 0 ? mask[i - w] : 0;
+      const dn = y < h - 1 ? mask[i + w] : 0;
+      const lf = x > 0 ? mask[i - 1] : 0;
+      const rt = x < w - 1 ? mask[i + 1] : 0;
+      if (!up || !dn || !lf || !rt) perim++;
+    }
+  }
+  cx /= count; cy /= count;
+  const area = count;
+  const circularity = Math.min(1, (4 * Math.PI * area) / (perim * perim || 1));
+
+  // Symmetry: compare halves about bbox center.
+  const midX = (minX + maxX) / 2;
+  const midY = (minY + maxY) / 2;
+  let hMatch = 0, hTotal = 0, vMatch = 0, vTotal = 0;
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const mx = Math.round(2 * midX - x);
+      const my = Math.round(2 * midY - y);
+      if (mx >= 0 && mx < w) {
+        const a = mask[y * w + x];
+        const b = mask[y * w + mx];
+        hTotal++;
+        if (a === b) hMatch++;
+      }
+      if (my >= 0 && my < h) {
+        const a = mask[y * w + x];
+        const b = mask[my * w + x];
+        vTotal++;
+        if (a === b) vMatch++;
+      }
+    }
+  }
+  const hSym = hTotal ? hMatch / hTotal : 0;
+  const vSym = vTotal ? vMatch / vTotal : 0;
+
+  // Corner score: variance of distance from centroid to boundary pixels, normalized.
+  let n = 0, sum = 0, sumSq = 0;
+  const norm = Math.max(bw, bh) / 2 || 1;
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const i = y * w + x;
+      if (!mask[i]) continue;
+      const up = y > 0 ? mask[i - w] : 0;
+      const dn = y < h - 1 ? mask[i + w] : 0;
+      const lf = x > 0 ? mask[i - 1] : 0;
+      const rt = x < w - 1 ? mask[i + 1] : 0;
+      if (up && dn && lf && rt) continue;
+      const d = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2) / norm;
+      sum += d; sumSq += d * d; n++;
+    }
+  }
+  const meanD = n ? sum / n : 0;
+  const varD = n ? sumSq / n - meanD * meanD : 0;
+  const cornerScore = Math.min(1, Math.sqrt(Math.max(0, varD)) * 3);
+
+  return { fillRatio, aspect, circularity, vSym, hSym, cornerScore };
+}
+
+// Synthetic feature distributions per shape class — calibrated to match what
+// extractShapeFeatures returns for hand-drawn strokes.
+export function makeShapeDataset(n = 800, seed = 11) {
+  const rng = mulberry32(seed);
+  const X: Vec[] = [];
+  const y: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const cls = Math.floor(rng() * 4);
+    let row: Vec;
+    if (cls === 0) {
+      // Circle: round outline, high circularity, low corner variance.
+      row = [
+        clamp01(gauss(rng, 0.25, 0.08)),       // fillRatio (outline only)
+        clamp01(gauss(rng, 0.92, 0.05)),       // aspect ~1
+        clamp01(gauss(rng, 0.78, 0.08)),       // high circularity
+        clamp01(gauss(rng, 0.9, 0.04)),
+        clamp01(gauss(rng, 0.9, 0.04)),
+        clamp01(gauss(rng, 0.12, 0.05)),
+      ];
+    } else if (cls === 1) {
+      // Square: boxy, symmetric, moderate corners.
+      row = [
+        clamp01(gauss(rng, 0.3, 0.08)),
+        clamp01(gauss(rng, 0.9, 0.06)),
+        clamp01(gauss(rng, 0.5, 0.07)),
+        clamp01(gauss(rng, 0.92, 0.04)),
+        clamp01(gauss(rng, 0.92, 0.04)),
+        clamp01(gauss(rng, 0.35, 0.07)),
+      ];
+    } else if (cls === 2) {
+      // Triangle: vertically symmetric, less horizontally, sharper corner variance.
+      row = [
+        clamp01(gauss(rng, 0.22, 0.07)),
+        clamp01(gauss(rng, 0.85, 0.08)),
+        clamp01(gauss(rng, 0.42, 0.07)),
+        clamp01(gauss(rng, 0.88, 0.05)),       // vertical mirror still mostly matches
+        clamp01(gauss(rng, 0.72, 0.07)),       // horizontal mirror weaker
+        clamp01(gauss(rng, 0.55, 0.1)),
+      ];
+    } else {
+      // Line: thin, low aspect.
+      row = [
+        clamp01(gauss(rng, 0.5, 0.15)),
+        clamp01(gauss(rng, 0.12, 0.07)),
+        clamp01(gauss(rng, 0.15, 0.06)),
+        clamp01(gauss(rng, 0.85, 0.06)),
+        clamp01(gauss(rng, 0.85, 0.06)),
+        clamp01(gauss(rng, 0.2, 0.08)),
+      ];
+    }
+    X.push(row);
+    y.push(cls);
+  }
+  return { X, y };
+}
+
+function clamp01(v: number) {
+  return Math.max(0, Math.min(1, v));
+}

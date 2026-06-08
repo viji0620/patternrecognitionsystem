@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "pattern recognition" },
+      { name: "description", content: "Pattern Finder identifies patterns in images using machine learning." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "pattern recognition" },
+      { property: "og:description", content: "Pattern Finder identifies patterns in images using machine learning." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "pattern recognition" },
+      { name: "twitter:description", content: "Pattern Finder identifies patterns in images using machine learning." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8e1c6b6a-f3cb-4639-9738-ed55992376e2/id-preview-3e52a925--16859550-c49f-4236-be98-4e8625c69912.lovable.app-1780929513480.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8e1c6b6a-f3cb-4639-9738-ed55992376e2/id-preview-3e52a925--16859550-c49f-4236-be98-4e8625c69912.lovable.app-1780929513480.png" },
     ],
     links: [
       {

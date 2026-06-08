@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Brain, Activity, ShieldAlert, ArrowUpRight, Sparkles, Cpu, Network, Zap } from "lucide-react";
+import { Brain, Activity, ShieldAlert, ArrowUpRight, Sparkles, Cpu, Network, Zap, Eye } from "lucide-react";
 import { NeuralCanvas } from "@/components/NeuralCanvas";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 
@@ -27,6 +27,7 @@ function Index() {
           <NavPill to="/">Overview</NavPill>
           <NavPill to="/fraud">Fraud engine</NavPill>
           <NavPill to="/heartbeat">ECG classifier</NavPill>
+          <NavPill to="/shapes">Shape vision</NavPill>
         </nav>
         <div className="hidden items-center gap-2 text-xs font-mono text-muted-foreground md:flex">
           <span className="relative flex h-2 w-2">
@@ -74,8 +75,8 @@ function Index() {
           {/* Stats */}
           <div className="mt-12 grid max-w-lg grid-cols-3 gap-4">
             {[
-              { v: 2, l: "ML algorithms", d: 0 },
-              { v: 1600, l: "training samples", d: 0 },
+              { v: 3, l: "ML pipelines", d: 0 },
+              { v: 2400, l: "training samples", d: 0 },
               { v: 0, l: "external deps", d: 0 },
             ].map((s, i) => (
               <div
@@ -138,15 +139,15 @@ function Index() {
           <div>
             <div className="font-mono text-xs uppercase tracking-widest text-primary">// 02 — models</div>
             <h2 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Two minds. Two patterns.
+              Three minds. Three patterns.
             </h2>
           </div>
           <div className="hidden font-mono text-xs text-muted-foreground sm:block">
-            both train on mount → ~50ms
+            all train on mount → ~80ms
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <ModelCard
             to="/fraud"
             tag="behavioral"
@@ -168,6 +169,17 @@ function Index() {
             features={["4-class classifier", "k = 7 neighbors", "live ECG visual"]}
             color="accent"
             delay={120}
+          />
+          <ModelCard
+            to="/shapes"
+            tag="image"
+            algo="K-NN + FEATURE EXTRACTION"
+            icon={<Eye className="h-5 w-5" />}
+            title="Shape vision recognizer"
+            desc="Reads pixels off a canvas, distills them into geometric features — circularity, symmetry, corner energy — and names what you drew."
+            features={["draw to classify", "6 features", "live binary mask"]}
+            color="primary"
+            delay={240}
           />
         </div>
       </section>

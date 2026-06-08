@@ -326,62 +326,100 @@ export function extractShapeFeatures(mask: Uint8Array, w: number, h: number): Sh
   return { fillRatio, aspect, circularity, vSym, hSym, cornerScore };
 }
 
-// Synthetic feature distributions per shape class — calibrated to match what
-// extractShapeFeatures returns for hand-drawn strokes.
-export function makeShapeDataset(n = 800, seed = 11) {
+// Rasterize a canonical shape outline into a binary mask. cls: 0=Circle, 1=Square, 2=Triangle, 3=Line.
+// Returns the same kind of mask the live canvas extractor produces, so the model trains
+// on the actual feature distribution it will see at inference time.
+export function rasterizeShape(cls: number, w: number, h: number, rng: () => number, thickness = 3): Uint8Array {
+  const mask = new Uint8Array(w * h);
+  const cx = w / 2 + (rng() - 0.5) * w * 0.1;
+  const cy = h / 2 + (rng() - 0.5) * h * 0.1;
+  const size = Math.min(w, h) * (0.45 + rng() * 0.35);
+  const rot = (rng() - 0.5) * Math.PI * 0.5;
+  const cos = Math.cos(rot), sin = Math.sin(rot);
+
+  const plotLine = (x0: number, y0: number, x1: number, y1: number) => {
+    const steps = Math.ceil(Math.hypot(x1 - x0, y1 - y0)) + 1;
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps;
+      const px = x0 + (x1 - x0) * t;
+      const py = y0 + (y1 - y0) * t;
+      stamp(mask, w, h, px, py, thickness);
+    }
+  };
+
+  if (cls === 0) {
+    // Circle outline (slightly noisy radius).
+    const r = size / 2;
+    const segs = 64;
+    let prev: [number, number] | null = null;
+    for (let i = 0; i <= segs; i++) {
+      const a = (i / segs) * Math.PI * 2;
+      const rr = r * (1 + (rng() - 0.5) * 0.04);
+      const x = cx + Math.cos(a) * rr;
+      const y = cy + Math.sin(a) * rr;
+      if (prev) plotLine(prev[0], prev[1], x, y);
+      prev = [x, y];
+    }
+  } else if (cls === 1) {
+    // Square outline (rotated, aspect jitter).
+    const wH = size / 2;
+    const hH = (size / 2) * (0.85 + rng() * 0.3);
+    const pts: [number, number][] = [
+      [-wH, -hH], [wH, -hH], [wH, hH], [-wH, hH], [-wH, -hH],
+    ].map(([x, y]) => [cx + x * cos - y * sin, cy + x * sin + y * cos]);
+    for (let i = 0; i < pts.length - 1; i++) plotLine(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+  } else if (cls === 2) {
+    // Triangle outline (isoceles, rotated).
+    const r = size / 2;
+    const angles = [-Math.PI / 2, Math.PI / 6, (5 * Math.PI) / 6];
+    const pts = angles.map((a) => {
+      const x = Math.cos(a) * r;
+      const y = Math.sin(a) * r;
+      return [cx + x * cos - y * sin, cy + x * sin + y * cos] as [number, number];
+    });
+    plotLine(pts[0][0], pts[0][1], pts[1][0], pts[1][1]);
+    plotLine(pts[1][0], pts[1][1], pts[2][0], pts[2][1]);
+    plotLine(pts[2][0], pts[2][1], pts[0][0], pts[0][1]);
+  } else {
+    // Line segment.
+    const half = size / 2;
+    const x0 = cx - cos * half;
+    const y0 = cy - sin * half;
+    const x1 = cx + cos * half;
+    const y1 = cy + sin * half;
+    plotLine(x0, y0, x1, y1);
+  }
+  return mask;
+}
+
+function stamp(mask: Uint8Array, w: number, h: number, px: number, py: number, r: number) {
+  const x0 = Math.max(0, Math.floor(px - r));
+  const x1 = Math.min(w - 1, Math.ceil(px + r));
+  const y0 = Math.max(0, Math.floor(py - r));
+  const y1 = Math.min(h - 1, Math.ceil(py + r));
+  const r2 = r * r;
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const dx = x - px, dy = y - py;
+      if (dx * dx + dy * dy <= r2) mask[y * w + x] = 1;
+    }
+  }
+}
+
+// Build a feature-vector dataset by rasterizing real shapes and extracting features.
+export function makeShapeDataset(n = 600, seed = 11, w = 96, h = 96) {
   const rng = mulberry32(seed);
   const X: Vec[] = [];
   const y: number[] = [];
   for (let i = 0; i < n; i++) {
-    const cls = Math.floor(rng() * 4);
-    let row: Vec;
-    if (cls === 0) {
-      // Circle: round outline, high circularity, low corner variance.
-      row = [
-        clamp01(gauss(rng, 0.25, 0.08)),       // fillRatio (outline only)
-        clamp01(gauss(rng, 0.92, 0.05)),       // aspect ~1
-        clamp01(gauss(rng, 0.78, 0.08)),       // high circularity
-        clamp01(gauss(rng, 0.9, 0.04)),
-        clamp01(gauss(rng, 0.9, 0.04)),
-        clamp01(gauss(rng, 0.12, 0.05)),
-      ];
-    } else if (cls === 1) {
-      // Square: boxy, symmetric, moderate corners.
-      row = [
-        clamp01(gauss(rng, 0.3, 0.08)),
-        clamp01(gauss(rng, 0.9, 0.06)),
-        clamp01(gauss(rng, 0.5, 0.07)),
-        clamp01(gauss(rng, 0.92, 0.04)),
-        clamp01(gauss(rng, 0.92, 0.04)),
-        clamp01(gauss(rng, 0.35, 0.07)),
-      ];
-    } else if (cls === 2) {
-      // Triangle: vertically symmetric, less horizontally, sharper corner variance.
-      row = [
-        clamp01(gauss(rng, 0.22, 0.07)),
-        clamp01(gauss(rng, 0.85, 0.08)),
-        clamp01(gauss(rng, 0.42, 0.07)),
-        clamp01(gauss(rng, 0.88, 0.05)),       // vertical mirror still mostly matches
-        clamp01(gauss(rng, 0.72, 0.07)),       // horizontal mirror weaker
-        clamp01(gauss(rng, 0.55, 0.1)),
-      ];
-    } else {
-      // Line: thin, low aspect.
-      row = [
-        clamp01(gauss(rng, 0.5, 0.15)),
-        clamp01(gauss(rng, 0.12, 0.07)),
-        clamp01(gauss(rng, 0.15, 0.06)),
-        clamp01(gauss(rng, 0.85, 0.06)),
-        clamp01(gauss(rng, 0.85, 0.06)),
-        clamp01(gauss(rng, 0.2, 0.08)),
-      ];
-    }
-    X.push(row);
+    const cls = i % 4; // balanced classes
+    const thickness = 2 + Math.floor(rng() * 4);
+    const mask = rasterizeShape(cls, w, h, rng, thickness);
+    const f = extractShapeFeatures(mask, w, h);
+    if (!f) continue;
+    X.push(featuresToVec(f));
     y.push(cls);
   }
   return { X, y };
 }
 
-function clamp01(v: number) {
-  return Math.max(0, Math.min(1, v));
-}

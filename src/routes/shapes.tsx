@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Eye, Sparkles, Trash2, Circle, Square, Triangle, Minus } from "lucide-react";
+import { ArrowLeft, Eye, Sparkles, Trash2, Circle, Square, Triangle, Minus, Upload } from "lucide-react";
 import {
   KNN, SHAPE_LABELS, extractShapeFeatures, featuresToVec,
   makeShapeDataset, standardize, applyStandardize, trainTestSplit,
@@ -95,17 +95,26 @@ function ShapesPage() {
     if (!c) return;
     const ctx = c.getContext("2d")!;
     const img = ctx.getImageData(0, 0, W, H);
-    // Build mask: pixel != background.
-    const mask = new Uint8Array(W * H);
     const data = img.data;
+
+    // Sample background color from the four corners so the mask works for
+    // both the dark-themed drawing surface AND uploaded photos with any bg.
+    const sample = (x: number, y: number) => {
+      const i = (y * W + x) * 4;
+      return [data[i], data[i + 1], data[i + 2]];
+    };
+    const corners = [sample(2, 2), sample(W - 3, 2), sample(2, H - 3), sample(W - 3, H - 3)];
+    const bg = [0, 1, 2].map((k) => corners.reduce((s, c) => s + c[k], 0) / corners.length);
+
+    const mask = new Uint8Array(W * H);
     for (let i = 0, j = 0; i < data.length; i += 4, j++) {
-      // background is dark blue; ink pixels are noticeably brighter / chromatic.
-      const r = data[i], g = data[i + 1], b = data[i + 2];
-      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-      mask[j] = lum > 60 ? 1 : 0;
+      const dr = data[i] - bg[0];
+      const dg = data[i + 1] - bg[1];
+      const db = data[i + 2] - bg[2];
+      const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+      mask[j] = dist > 55 ? 1 : 0;
     }
 
-    // Draw mini preview of mask
     const pv = previewRef.current;
     if (pv) {
       const pctx = pv.getContext("2d")!;
@@ -126,6 +135,28 @@ function ShapesPage() {
       setPrediction(null);
     }
   }, [mean, std, model]);
+
+  const onUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const ctx = canvasRef.current!.getContext("2d")!;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, W, H);
+      // contain-fit
+      const scale = Math.min(W / img.width, H / img.height);
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      URL.revokeObjectURL(url);
+      setVersion((v) => v + 1);
+    };
+    img.src = url;
+    e.target.value = "";
+  };
+
 
   useEffect(() => {
     cancelAnimationFrame(rafRef.current);
@@ -164,14 +195,20 @@ function ShapesPage() {
         <div className="mt-8 grid gap-6 lg:grid-cols-[auto_1fr]">
           {/* Canvas card */}
           <div className="rounded-3xl border border-border bg-surface/40 p-6 backdrop-blur animate-fade-up" style={{ animationDelay: "80ms" }}>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">// canvas · 280×280</div>
-              <button
-                onClick={clear}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2/60 px-3 py-1 text-xs text-muted-foreground transition hover:border-danger hover:text-foreground"
-              >
-                <Trash2 className="h-3 w-3" /> clear
-              </button>
+              <div className="flex items-center gap-2">
+                <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-surface-2/60 px-3 py-1 text-xs text-muted-foreground transition hover:border-accent hover:text-foreground">
+                  <Upload className="h-3 w-3" /> upload
+                  <input type="file" accept="image/*" className="hidden" onChange={onUpload} />
+                </label>
+                <button
+                  onClick={clear}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2/60 px-3 py-1 text-xs text-muted-foreground transition hover:border-danger hover:text-foreground"
+                >
+                  <Trash2 className="h-3 w-3" /> clear
+                </button>
+              </div>
             </div>
 
             <div className="relative mt-4">

@@ -348,18 +348,19 @@ export function rasterizeShape(cls: number, w: number, h: number, rng: () => num
   };
 
   if (cls === 0) {
-    // Circle outline (slightly noisy radius).
-    const r = size / 2;
-    const segs = 64;
-    let prev: [number, number] | null = null;
-    for (let i = 0; i <= segs; i++) {
-      const a = (i / segs) * Math.PI * 2;
-      const rr = r * (1 + (rng() - 0.5) * 0.04);
-      const x = cx + Math.cos(a) * rr;
-      const y = cy + Math.sin(a) * rr;
-      if (prev) plotLine(prev[0], prev[1], x, y);
-      prev = [x, y];
+    // 5-pointed star outline (alternating outer/inner radius).
+    const rOuter = size / 2;
+    const rInner = rOuter * (0.38 + (rng() - 0.5) * 0.06);
+    const points = 5;
+    const pts: [number, number][] = [];
+    for (let i = 0; i <= points * 2; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI) / points;
+      const rr = i % 2 === 0 ? rOuter : rInner;
+      const x = Math.cos(a) * rr;
+      const y = Math.sin(a) * rr;
+      pts.push([cx + x * cos - y * sin, cy + x * sin + y * cos]);
     }
+    for (let i = 0; i < pts.length - 1; i++) plotLine(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
   } else if (cls === 1) {
     // Square outline (rotated, aspect jitter).
     const wH = size / 2;

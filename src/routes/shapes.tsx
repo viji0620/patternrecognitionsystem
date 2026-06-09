@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Eye, Sparkles, Trash2, Circle, Square, Triangle, Minus, Upload } from "lucide-react";
+import { ArrowLeft, Eye, Sparkles, Trash2, Star, Square, Triangle, Minus, Upload } from "lucide-react";
 import {
   KNN, SHAPE_LABELS, extractShapeFeatures, featuresToVec,
   makeShapeDataset, standardize, applyStandardize, trainTestSplit,

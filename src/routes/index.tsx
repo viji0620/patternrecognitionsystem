@@ -70,6 +70,13 @@ function Index() {
               <Activity className="h-4 w-4 text-success" />
               Open ECG classifier
             </Link>
+            <Link
+              to="/shapes"
+              className="inline-flex items-center gap-2 rounded-full border border-border-strong bg-surface/60 px-6 py-3 text-sm font-semibold text-foreground backdrop-blur transition hover:border-accent hover:bg-surface"
+            >
+              <Eye className="h-4 w-4 text-accent" />
+              Launch shape vision
+            </Link>
           </div>
 
           {/* Stats */}

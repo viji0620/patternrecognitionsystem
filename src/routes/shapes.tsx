@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Eye, Sparkles, Trash2, Circle, Square, Triangle, Minus, Upload } from "lucide-react";
+import { ArrowLeft, Eye, Sparkles, Trash2, Star, Square, Triangle, Minus, Upload } from "lucide-react";
 import {
   KNN, SHAPE_LABELS, extractShapeFeatures, featuresToVec,
   makeShapeDataset, standardize, applyStandardize, trainTestSplit,
@@ -257,7 +257,7 @@ function ShapesPage() {
                 <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">try drawing</div>
                 <div className="mt-2 grid grid-cols-4 gap-2">
                   {[
-                    { i: <Circle className="h-4 w-4" />, n: "Circle" },
+                    { i: <Star className="h-4 w-4" />, n: "Star" },
                     { i: <Square className="h-4 w-4" />, n: "Square" },
                     { i: <Triangle className="h-4 w-4" />, n: "Triangle" },
                     { i: <Minus className="h-4 w-4" />, n: "Line" },

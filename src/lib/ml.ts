@@ -407,13 +407,18 @@ function stamp(mask: Uint8Array, w: number, h: number, px: number, py: number, r
 }
 
 // Build a feature-vector dataset by rasterizing real shapes and extracting features.
-export function makeShapeDataset(n = 600, seed = 11, w = 96, h = 96) {
+// Trains across a wide thickness range so the model handles both thin pencil
+// strokes and chunky marker strokes that users actually draw with.
+export function makeShapeDataset(n = 800, seed = 11, w = 280, h = 280) {
   const rng = mulberry32(seed);
   const X: Vec[] = [];
   const y: number[] = [];
   for (let i = 0; i < n; i++) {
     const cls = i % 4; // balanced classes
-    const thickness = 2 + Math.floor(rng() * 4);
+    // Sweep thickness proportional to canvas so small + large brushes both
+    // appear in the training distribution.
+    const base = Math.max(2, Math.min(w, h) * 0.012);
+    const thickness = base + rng() * Math.max(4, Math.min(w, h) * 0.05);
     const mask = rasterizeShape(cls, w, h, rng, thickness);
     const f = extractShapeFeatures(mask, w, h);
     if (!f) continue;

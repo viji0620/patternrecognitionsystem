@@ -223,7 +223,7 @@ export function trainTestSplit(X: Vec[], y: number[], testRatio = 0.2, seed = 1)
 }
 
 // ---------------- Shape / image patterns ----------------
-export const SHAPE_LABELS = ["Circle", "Square", "Triangle", "Line"];
+export const SHAPE_LABELS = ["Star", "Square", "Triangle", "Line"];
 
 export type ShapeFeatures = {
   fillRatio: number;       // filled pixels / bbox area
